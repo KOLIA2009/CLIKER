@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Clickers</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: linear-gradient(to right, #2193b0, #6dd5ed);
+      color: white;
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+    h1 {
+      font-size: 3em;
+    }
+    #score, #rebirths, #rebirthCost, #autoClickerInfo {
+      font-size: 1.3em;
+      margin: 8px 0;
+    }
+    button {
+      padding: 12px 25px;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 12px;
+      background: #4CAF50;
+      color: white;
+      cursor: pointer;
+      transition: 0.2s;
+      margin: 5px;
+    }
+    button:hover {
+      background: #45a049;
+      transform: scale(1.05);
+    }
+    button:active {
+      transform: scale(0.95);
+    }
+    #petShop {
+      position: fixed;
+      left: -400px;
+      top: 0;
+      width: 300px;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      padding: 20px;
+      transition: left 0.3s;
+      overflow-y: auto;
+    }
+    #petShop.open {
+      left: 0;
+    }
+    .pet {
+      border: 2px solid white;
+      border-radius: 10px;
+      padding: 10px;
+      margin: 10px 0;
+    }
+    .pet img {
+      width: 100px;
+      height: 100px;
+    }
+    #coin {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      background: gold;
+      border-radius: 50%;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      font-size: 20px;
+      font-weight: bold;
+      color: black;
+      cursor: pointer;
+    }
+    #coinTimer {
+      position: absolute;
+      top: 20px;
+      font-size: 1.5em;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Clickers 🎮</h1>
+  <div id="score">Clicks: 0</div>
+  <div id="rebirths">Rebirths: 0</div>
+  <div id="rebirthCost">Rebirth cost: 1000</div>
+  <div id="autoClickerInfo">Auto-Clicker Level: 0 | Income: 0/sec | Next Upgrade: 5000</div>
+  
+  <button onclick="clickButton()">Click me!</button>
+  <button onclick="buyRebirth()">Buy Rebirth</button>
+  <button onclick="togglePetShop()">Pet Shop</button>
+  <button onclick="buyAutoClicker()">Buy Auto-Clicker Upgrade</button>
+  <button onclick="resetGame()">Reset Game</button>
+
+  <!-- Pet Shop -->
+  <div id="petShop">
+    <h2>Pets</h2>
+    <div class="pet">
+      <h3>Booster (1500 clicks)</h3>
+      <img src="https://cdn-icons-png.flaticon.com/512/1055/1055646.png" alt="Booster">
+      <p>5% chance to get +100 clicks when clicking.</p>
+      <button onclick="buyPet('booster')">Buy</button>
+    </div>
+    <div class="pet">
+      <h3>Richman (3000 clicks)</h3>
+      <img src="https://cdn-icons-png.flaticon.com/512/138/138281.png" alt="Richman">
+      <p>10% chance to spawn a coin on click. Click it in 5s to earn 200 clicks.</p>
+      <button onclick="buyPet('richman')">Buy</button>
+    </div>
+    <div class="pet">
+      <h3>Prosperity (10000 clicks)</h3>
+      <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Prosperity">
+      <p>0.1% chance to get 3–5 rebirths instead of 1 when buying rebirth.</p>
+      <button onclick="buyPet('prosperity')">Buy</button>
+    </div>
+  </div>
+
+  <!-- Coin -->
+  <div id="coin">💰</div>
+  <div id="coinTimer">5</div>
+
+  <script>
+    let score = 0;
+    let rebirths = 0;
+    let rebirthCost = 1000;
+
+    // Pets
+    let pets = {
+      booster: false,
+      richman: false,
+      prosperity: false
+    };
+
+    // Auto-Clicker
+    let autoClickerLevel = 0;
+    let autoClickerIncome = 0;
+    let autoClickerCost = 5000;
+    const maxAutoClickerLevel = 15;
+
+    // === AUTO INCOME ===
+    setInterval(() => {
+      if (autoClickerLevel > 0) {
+        score += autoClickerIncome * (1 + rebirths);
+        updateDisplay();
+        saveGame();
+      }
+    }, 1000);
+
+    // === MAIN CLICK ===
+    function clickButton() {
+      let gain = 1 + rebirths;
+      score += gain;
+
+      if (pets.booster && Math.random() < 0.05) {
+        score += 100 * gain;
+        alert("Booster activated! +100 clicks!");
+      }
+      if (pets.richman && Math.random() < 0.10) {
+        spawnCoin();
+      }
+
+      updateDisplay();
+      saveGame();
+    }
+
+    // === REBIRTH ===
+    function buyRebirth() {
+      if (score >= rebirthCost) {
+        score -= rebirthCost;
+
+        let gained = 1;
+        if (pets.prosperity && Math.random() < 0.001) {
+          gained = Math.floor(Math.random() * 3) + 3; 
+          alert("Prosperity activated! +" + gained + " rebirths!");
+        }
+
+        rebirths += gained;
+
+        let increasePercent = Math.random() * (1.0 - 0.1) + 0.1; 
+        rebirthCost = Math.floor(rebirthCost * (1 + increasePercent));
+
+        updateDisplay();
+        saveGame();
+      } else {
+        alert("Not enough clicks for rebirth!");
+      }
+    }
+
+    // === AUTO CLICKER ===
+    function buyAutoClicker() {
+      if (autoClickerLevel >= maxAutoClickerLevel) {
+        alert("Auto-Clicker is at max level!");
+        return;
+      }
+      if (score >= autoClickerCost) {
+        score -= autoClickerCost;
+        autoClickerLevel++;
+        if (autoClickerLevel === 1) {
+          autoClickerIncome = 1;
+        } else {
+          autoClickerIncome = Math.floor(autoClickerIncome * 1.5);
+        }
+        autoClickerCost += 2500;
+        updateDisplay();
+        saveGame();
+      } else {
+        alert("Not enough clicks!");
+      }
+    }
+
+    // === UI ===
+    function updateDisplay() {
+      document.getElementById("score").innerText = "Clicks: " + score;
+      document.getElementById("rebirths").innerText = "Rebirths: " + rebirths;
+      document.getElementById("rebirthCost").innerText = "Rebirth cost: " + rebirthCost;
+      document.getElementById("autoClickerInfo").innerText = 
+        `Auto-Clicker Level: ${autoClickerLevel} | Income: ${autoClickerIncome}/sec | Next Upgrade: ${autoClickerLevel < maxAutoClickerLevel ? autoClickerCost : "MAX"}`;
+    }
+
+    function togglePetShop() {
+      document.getElementById("petShop").classList.toggle("open");
+    }
+
+    // === PETS ===
+    function buyPet(pet) {
+      let cost = {booster: 1500, richman: 3000, prosperity: 10000}[pet];
+      if (score >= cost && !pets[pet]) {
+        score -= cost;
+        pets[pet] = true;
+        alert(pet.charAt(0).toUpperCase() + pet.slice(1) + " bought!");
+        updateDisplay();
+        saveGame();
+      } else if (pets[pet]) {
+        alert("You already own this pet!");
+      } else {
+        alert("Not enough clicks!");
+      }
+    }
+
+    // === COIN SPAWN ===
+    function spawnCoin() {
+      let coin = document.getElementById("coin");
+      let timerEl = document.getElementById("coinTimer");
+      let timeLeft = 5;
+
+      coin.style.left = Math.random() * (window.innerWidth - 60) + "px";
+      coin.style.top = Math.random() * (window.innerHeight - 60) + "px";
+      coin.style.display = "flex";
+      timerEl.style.display = "block";
+      timerEl.innerText = timeLeft;
+
+      let interval = setInterval(() => {
+        timeLeft--;
+        timerEl.innerText = timeLeft;
+        if (timeLeft <= 0) {
+          coin.style.display = "none";
+          timerEl.style.display = "none";
+          clearInterval(interval);
+        }
+      }, 1000);
+
+      coin.onclick = () => {
+        let gain = 200 * (1 + rebirths);
+        score += gain;
+        alert("You clicked the coin! +" + gain + " clicks!");
+        coin.style.display = "none";
+        timerEl.style.display = "none";
+        clearInterval(interval);
+        updateDisplay();
+        saveGame();
+      };
+    }
+
+    // === SAVE & LOAD ===
+    function saveGame() {
+      let data = {
+        score,
+        rebirths,
+        rebirthCost,
+        pets,
+        autoClickerLevel,
+        autoClickerIncome,
+        autoClickerCost
+      };
+      localStorage.setItem("clickersSave", JSON.stringify(data));
+    }
+
+    function loadGame() {
+      let saved = localStorage.getItem("clickersSave");
+      if (saved) {
+        let data = JSON.parse(saved);
+        score = data.score || 0;
+        rebirths = data.rebirths || 0;
+        rebirthCost = data.rebirthCost || 1000;
+        pets = data.pets || {booster:false, richman:false, prosperity:false};
+        autoClickerLevel = data.autoClickerLevel || 0;
+        autoClickerIncome = data.autoClickerIncome || 0;
+        autoClickerCost = data.autoClickerCost || 5000;
+      }
+      updateDisplay();
+    }
+
+    function resetGame() {
+      if (confirm("Are you sure you want to reset your progress?")) {
+        localStorage.removeItem("clickersSave");
+        location.reload();
+      }
+    }
+
+    // === INIT ===
+    loadGame();
+  </script>
+</body>
+</html>
