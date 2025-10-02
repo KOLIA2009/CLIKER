@@ -19,15 +19,15 @@
     h1 {
       font-size: 3em;
     }
-    #score, #rebirths, #rebirthCost, #autoClickerInfo {
-      font-size: 1.3em;
-      margin: 8px 0;
+    #score, #rebirths, #rebirthCost, #autoClicker {
+      font-size: 1.5em;
+      margin: 10px 0;
     }
     button {
-      padding: 12px 25px;
+      padding: 15px 30px;
       font-size: 1.1em;
       border: none;
-      border-radius: 12px;
+      border-radius: 15px;
       background: #4CAF50;
       color: white;
       cursor: pointer;
@@ -41,6 +41,13 @@
     button:active {
       transform: scale(0.95);
     }
+    #resetBtn {
+      background: crimson;
+    }
+    #resetBtn:hover {
+      background: darkred;
+    }
+    /* Pet shop */
     #petShop {
       position: fixed;
       left: -400px;
@@ -52,6 +59,7 @@
       padding: 20px;
       transition: left 0.3s;
       overflow-y: auto;
+      z-index: 100;
     }
     #petShop.open {
       left: 0;
@@ -66,6 +74,7 @@
       width: 100px;
       height: 100px;
     }
+    /* Coin */
     #coin {
       position: absolute;
       width: 60px;
@@ -86,6 +95,35 @@
       font-size: 1.5em;
       display: none;
     }
+    /* Background menu */
+    #backgroundMenu {
+      position: fixed;
+      right: -400px;
+      top: 0;
+      width: 300px;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      padding: 20px;
+      transition: right 0.3s;
+      overflow-y: auto;
+      z-index: 100;
+    }
+    #backgroundMenu.open {
+      right: 0;
+    }
+    #backgroundMenu button {
+      display: block;
+      width: 100%;
+      margin: 5px 0;
+    }
+    #backgroundMenu input {
+      margin: 5px 0;
+      width: 100%;
+      padding: 5px;
+      border-radius: 5px;
+      border: none;
+    }
   </style>
 </head>
 <body>
@@ -93,13 +131,14 @@
   <div id="score">Clicks: 0</div>
   <div id="rebirths">Rebirths: 0</div>
   <div id="rebirthCost">Rebirth cost: 1000</div>
-  <div id="autoClickerInfo">Auto-Clicker Level: 0 | Income: 0/sec | Next Upgrade: 5000</div>
+  <div id="autoClicker">AutoClicker: Level 0</div>
   
   <button onclick="clickButton()">Click me!</button>
   <button onclick="buyRebirth()">Buy Rebirth</button>
+  <button onclick="buyAutoClicker()">Upgrade AutoClicker (5000/2500)</button>
   <button onclick="togglePetShop()">Pet Shop</button>
-  <button onclick="buyAutoClicker()">Buy Auto-Clicker Upgrade</button>
-  <button onclick="resetGame()">Reset Game</button>
+  <button onclick="toggleBackgroundMenu()">Background Settings</button>
+  <button id="resetBtn" onclick="resetGame()">Reset Progress</button>
 
   <!-- Pet Shop -->
   <div id="petShop">
@@ -128,34 +167,53 @@
   <div id="coin">💰</div>
   <div id="coinTimer">5</div>
 
+  <!-- Background Settings -->
+  <div id="backgroundMenu">
+    <h2>Background Settings</h2>
+    <h3>Colors</h3>
+    <button onclick="setBackground('red')">Red</button>
+    <button onclick="setBackground('blue')">Blue</button>
+    <button onclick="setBackground('green')">Green</button>
+    <button onclick="setBackground('black')">Black</button>
+    <button onclick="setBackground('white')">White</button>
+
+    <h3>Patterns</h3>
+    <button onclick="setBackground('linear-gradient(to right, #ff7e5f, #feb47b)')">Sunset</button>
+    <button onclick="setBackground('linear-gradient(to right, #43cea2, #185a9d)')">Ocean</button>
+    <button onclick="setBackground('repeating-linear-gradient(45deg, #606dbc, #606dbc 10px, #465298 10px, #465298 20px)')">Stripes</button>
+    <button onclick="setBackground('radial-gradient(circle, #ff9966, #ff5e62)')">Radial</button>
+
+    <h3>Custom Image</h3>
+    <input type="file" accept="image/*" onchange="uploadBackground(event)">
+
+    <h3>Custom Color / Pattern</h3>
+    <input type="color" id="customColor" value="#ffffff">
+    <button onclick="applyCustomColor()">Apply Color</button>
+
+    <input type="text" id="customPattern" placeholder="Например: repeating-linear-gradient(...)">
+    <button onclick="applyCustomPattern()">Apply Pattern</button>
+
+    <br><br>
+    <button onclick="toggleBackgroundMenu()">Close</button>
+  </div>
+
+  <audio id="bgMusic" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" autoplay loop></audio>
+
   <script>
     let score = 0;
     let rebirths = 0;
     let rebirthCost = 1000;
+    let autoClickerLevel = 0;
+    let autoClickerBase = 5000;
+    let autoClickerUpgradeCost = 2500;
+    let autoClickerActive = false;
 
-    // Pets
     let pets = {
       booster: false,
       richman: false,
       prosperity: false
     };
 
-    // Auto-Clicker
-    let autoClickerLevel = 0;
-    let autoClickerIncome = 0;
-    let autoClickerCost = 5000;
-    const maxAutoClickerLevel = 15;
-
-    // === AUTO INCOME ===
-    setInterval(() => {
-      if (autoClickerLevel > 0) {
-        score += autoClickerIncome * (1 + rebirths);
-        updateDisplay();
-        saveGame();
-      }
-    }, 1000);
-
-    // === MAIN CLICK ===
     function clickButton() {
       let gain = 1 + rebirths;
       score += gain;
@@ -164,6 +222,7 @@
         score += 100 * gain;
         alert("Booster activated! +100 clicks!");
       }
+
       if (pets.richman && Math.random() < 0.10) {
         spawnCoin();
       }
@@ -172,22 +231,19 @@
       saveGame();
     }
 
-    // === REBIRTH ===
     function buyRebirth() {
       if (score >= rebirthCost) {
         score -= rebirthCost;
-
         let gained = 1;
+
         if (pets.prosperity && Math.random() < 0.001) {
-          gained = Math.floor(Math.random() * 3) + 3; 
+          gained = Math.floor(Math.random() * 3) + 3;
           alert("Prosperity activated! +" + gained + " rebirths!");
         }
 
         rebirths += gained;
-
         let increasePercent = Math.random() * (1.0 - 0.1) + 0.1; 
         rebirthCost = Math.floor(rebirthCost * (1 + increasePercent));
-
         updateDisplay();
         saveGame();
       } else {
@@ -195,42 +251,6 @@
       }
     }
 
-    // === AUTO CLICKER ===
-    function buyAutoClicker() {
-      if (autoClickerLevel >= maxAutoClickerLevel) {
-        alert("Auto-Clicker is at max level!");
-        return;
-      }
-      if (score >= autoClickerCost) {
-        score -= autoClickerCost;
-        autoClickerLevel++;
-        if (autoClickerLevel === 1) {
-          autoClickerIncome = 1;
-        } else {
-          autoClickerIncome = Math.floor(autoClickerIncome * 1.5);
-        }
-        autoClickerCost += 2500;
-        updateDisplay();
-        saveGame();
-      } else {
-        alert("Not enough clicks!");
-      }
-    }
-
-    // === UI ===
-    function updateDisplay() {
-      document.getElementById("score").innerText = "Clicks: " + score;
-      document.getElementById("rebirths").innerText = "Rebirths: " + rebirths;
-      document.getElementById("rebirthCost").innerText = "Rebirth cost: " + rebirthCost;
-      document.getElementById("autoClickerInfo").innerText = 
-        `Auto-Clicker Level: ${autoClickerLevel} | Income: ${autoClickerIncome}/sec | Next Upgrade: ${autoClickerLevel < maxAutoClickerLevel ? autoClickerCost : "MAX"}`;
-    }
-
-    function togglePetShop() {
-      document.getElementById("petShop").classList.toggle("open");
-    }
-
-    // === PETS ===
     function buyPet(pet) {
       let cost = {booster: 1500, richman: 3000, prosperity: 10000}[pet];
       if (score >= cost && !pets[pet]) {
@@ -246,7 +266,47 @@
       }
     }
 
-    // === COIN SPAWN ===
+    function buyAutoClicker() {
+      if (autoClickerLevel === 0 && score >= autoClickerBase) {
+        score -= autoClickerBase;
+        autoClickerLevel = 1;
+        startAutoClicker();
+        alert("AutoClicker unlocked!");
+      } else if (autoClickerLevel > 0 && autoClickerLevel < 15 && score >= autoClickerUpgradeCost) {
+        score -= autoClickerUpgradeCost;
+        autoClickerLevel++;
+        autoClickerUpgradeCost = Math.floor(autoClickerUpgradeCost * 1.5);
+        alert("AutoClicker upgraded to level " + autoClickerLevel + "!");
+      } else if (autoClickerLevel >= 15) {
+        alert("Max AutoClicker level reached!");
+      } else {
+        alert("Not enough clicks!");
+      }
+      updateDisplay();
+      saveGame();
+    }
+
+    function startAutoClicker() {
+      if (!autoClickerActive) {
+        autoClickerActive = true;
+        setInterval(() => {
+          if (autoClickerLevel > 0) {
+            let gain = (1 + rebirths) * Math.pow(1.5, autoClickerLevel - 1);
+            score += Math.floor(gain);
+            updateDisplay();
+            saveGame();
+          }
+        }, 1000);
+      }
+    }
+
+    function updateDisplay() {
+      document.getElementById("score").innerText = "Clicks: " + score;
+      document.getElementById("rebirths").innerText = "Rebirths: " + rebirths;
+      document.getElementById("rebirthCost").innerText = "Rebirth cost: " + rebirthCost;
+      document.getElementById("autoClicker").innerText = "AutoClicker: Level " + autoClickerLevel;
+    }
+
     function spawnCoin() {
       let coin = document.getElementById("coin");
       let timerEl = document.getElementById("coinTimer");
@@ -280,44 +340,89 @@
       };
     }
 
-    // === SAVE & LOAD ===
-    function saveGame() {
-      let data = {
-        score,
-        rebirths,
-        rebirthCost,
-        pets,
-        autoClickerLevel,
-        autoClickerIncome,
-        autoClickerCost
-      };
-      localStorage.setItem("clickersSave", JSON.stringify(data));
+    function togglePetShop() {
+      document.getElementById("petShop").classList.toggle("open");
+    }
+    function toggleBackgroundMenu() {
+      document.getElementById("backgroundMenu").classList.toggle("open");
+    }
+    function setBackground(style) {
+      document.body.style.background = style;
+      localStorage.setItem("customBackground", style);
+    }
+    function uploadBackground(event) {
+      let file = event.target.files[0];
+      if (file) {
+        let reader = new FileReader();
+        reader.onload = function(e) {
+          let url = `url(${e.target.result})`;
+          document.body.style.background = `${url} center/cover no-repeat`;
+          localStorage.setItem("customBackground", `${url} center/cover no-repeat`);
+        };
+        reader.readAsDataURL(file);
+      }
     }
 
-    function loadGame() {
-      let saved = localStorage.getItem("clickersSave");
+    function applyCustomColor() {
+      let color = document.getElementById("customColor").value;
+      document.body.style.background = color;
+      localStorage.setItem("customBackground", color);
+    }
+
+    function applyCustomPattern() {
+      let pattern = document.getElementById("customPattern").value;
+      if(pattern.trim() !== "") {
+        document.body.style.background = pattern;
+        localStorage.setItem("customBackground", pattern);
+      } else {
+        alert("Введите корректный CSS узор!");
+      }
+    }
+
+    function loadBackground() {
+      let saved = localStorage.getItem("customBackground");
       if (saved) {
-        let data = JSON.parse(saved);
-        score = data.score || 0;
-        rebirths = data.rebirths || 0;
-        rebirthCost = data.rebirthCost || 1000;
-        pets = data.pets || {booster:false, richman:false, prosperity:false};
-        autoClickerLevel = data.autoClickerLevel || 0;
-        autoClickerIncome = data.autoClickerIncome || 0;
-        autoClickerCost = data.autoClickerCost || 5000;
+        document.body.style.background = saved;
+      }
+    }
+
+    function saveGame() {
+      let gameData = {
+        score, rebirths, rebirthCost,
+        pets, autoClickerLevel, autoClickerUpgradeCost
+      };
+      localStorage.setItem("clickerSave", JSON.stringify(gameData));
+    }
+    function loadGame() {
+      let saved = localStorage.getItem("clickerSave");
+      if (saved) {
+        let gameData = JSON.parse(saved);
+        score = gameData.score;
+        rebirths = gameData.rebirths;
+        rebirthCost = gameData.rebirthCost;
+        pets = gameData.pets;
+        autoClickerLevel = gameData.autoClickerLevel;
+        autoClickerUpgradeCost = gameData.autoClickerUpgradeCost;
+        if (autoClickerLevel > 0) startAutoClicker();
       }
       updateDisplay();
+      loadBackground();
     }
 
     function resetGame() {
-      if (confirm("Are you sure you want to reset your progress?")) {
-        localStorage.removeItem("clickersSave");
+      if (confirm("Ты точно хочешь сбросить весь прогресс? Это действие необратимо!")) {
+        localStorage.removeItem("clickerSave");
+        localStorage.removeItem("customBackground");
         location.reload();
       }
     }
 
-    // === INIT ===
-    loadGame();
+    window.onload = () => {
+      loadGame();
+      let bgMusic = document.getElementById("bgMusic");
+      bgMusic.volume = 0.1;
+      bgMusic.play();
+    }
   </script>
 </body>
 </html>
