@@ -19,7 +19,7 @@
     h1 {
       font-size: 3em;
     }
-    #score, #rebirths, #rebirthCost, #autoClicker {
+    #score, #rebirths, #rebirthCost {
       font-size: 1.5em;
       margin: 10px 0;
     }
@@ -131,11 +131,9 @@
   <div id="score">Clicks: 0</div>
   <div id="rebirths">Rebirths: 0</div>
   <div id="rebirthCost">Rebirth cost: 1000</div>
-  <div id="autoClicker">AutoClicker: Level 0</div>
   
   <button onclick="clickButton()">Click me!</button>
   <button onclick="buyRebirth()">Buy Rebirth</button>
-  <button onclick="buyAutoClicker()">Upgrade AutoClicker (5000/2500)</button>
   <button onclick="togglePetShop()">Pet Shop</button>
   <button onclick="toggleBackgroundMenu()">Background Settings</button>
   <button id="resetBtn" onclick="resetGame()">Reset Progress</button>
@@ -197,16 +195,13 @@
     <button onclick="toggleBackgroundMenu()">Close</button>
   </div>
 
+  <!-- Фоновая музыка -->
   <audio id="bgMusic" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" autoplay loop></audio>
 
   <script>
     let score = 0;
     let rebirths = 0;
     let rebirthCost = 1000;
-    let autoClickerLevel = 0;
-    let autoClickerBase = 5000;
-    let autoClickerUpgradeCost = 2500;
-    let autoClickerActive = false;
 
     let pets = {
       booster: false,
@@ -266,45 +261,10 @@
       }
     }
 
-    function buyAutoClicker() {
-      if (autoClickerLevel === 0 && score >= autoClickerBase) {
-        score -= autoClickerBase;
-        autoClickerLevel = 1;
-        startAutoClicker();
-        alert("AutoClicker unlocked!");
-      } else if (autoClickerLevel > 0 && autoClickerLevel < 15 && score >= autoClickerUpgradeCost) {
-        score -= autoClickerUpgradeCost;
-        autoClickerLevel++;
-        autoClickerUpgradeCost = Math.floor(autoClickerUpgradeCost * 1.5);
-        alert("AutoClicker upgraded to level " + autoClickerLevel + "!");
-      } else if (autoClickerLevel >= 15) {
-        alert("Max AutoClicker level reached!");
-      } else {
-        alert("Not enough clicks!");
-      }
-      updateDisplay();
-      saveGame();
-    }
-
-    function startAutoClicker() {
-      if (!autoClickerActive) {
-        autoClickerActive = true;
-        setInterval(() => {
-          if (autoClickerLevel > 0) {
-            let gain = (1 + rebirths) * Math.pow(1.5, autoClickerLevel - 1);
-            score += Math.floor(gain);
-            updateDisplay();
-            saveGame();
-          }
-        }, 1000);
-      }
-    }
-
     function updateDisplay() {
       document.getElementById("score").innerText = "Clicks: " + score;
       document.getElementById("rebirths").innerText = "Rebirths: " + rebirths;
       document.getElementById("rebirthCost").innerText = "Rebirth cost: " + rebirthCost;
-      document.getElementById("autoClicker").innerText = "AutoClicker: Level " + autoClickerLevel;
     }
 
     function spawnCoin() {
@@ -388,8 +348,7 @@
 
     function saveGame() {
       let gameData = {
-        score, rebirths, rebirthCost,
-        pets, autoClickerLevel, autoClickerUpgradeCost
+        score, rebirths, rebirthCost, pets
       };
       localStorage.setItem("clickerSave", JSON.stringify(gameData));
     }
@@ -401,9 +360,6 @@
         rebirths = gameData.rebirths;
         rebirthCost = gameData.rebirthCost;
         pets = gameData.pets;
-        autoClickerLevel = gameData.autoClickerLevel;
-        autoClickerUpgradeCost = gameData.autoClickerUpgradeCost;
-        if (autoClickerLevel > 0) startAutoClicker();
       }
       updateDisplay();
       loadBackground();
